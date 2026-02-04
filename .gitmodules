@@ -1,0 +1,3 @@
+[submodule "WhitelistTransferHook"]
+	path = WhitelistTransferHook
+	url = https://github.com/namay10/WhitelistTransferHook
