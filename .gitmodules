@@ -1,3 +1,6 @@
 [submodule "WhitelistTransferHook"]
 	path = WhitelistTransferHook
 	url = https://github.com/namay10/WhitelistTransferHook
+[submodule "Escrow_LiteSvm"]
+	path = Escrow_LiteSvm
+	url = https://github.com/namay10/Escrow_LiteSvm
