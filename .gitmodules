@@ -7,3 +7,6 @@
 [submodule "Whitelisted_vault_Transfer_hook"]
 	path = Whitelisted_vault_Transfer_hook
 	url = https://github.com/namay10/Whitelisted_vault_Transfer_hook
+[submodule "MagicBlock_Vrf_Er_example"]
+	path = MagicBlock_Vrf_Er_example
+	url = https://github.com/namay10/MagicBlock_Vrf_Er_example
