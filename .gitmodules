@@ -10,3 +10,6 @@
 [submodule "MagicBlock_Vrf_Er_example"]
 	path = MagicBlock_Vrf_Er_example
 	url = https://github.com/namay10/MagicBlock_Vrf_Er_example
+[submodule "tuktuk_vrf_er"]
+	path = tuktuk_vrf_er
+	url = https://github.com/namay10/tuktuk_vrf_er
