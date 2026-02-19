@@ -1,0 +1,13 @@
+# Ignore node_modules
+node_modules/
+
+# Ignore log files
+*.log
+
+# Ignore OS files
+.DS_Store
+
+# Ignore secret keys
+.env
+# Ignore target directory
+target/
