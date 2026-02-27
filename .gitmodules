@@ -13,3 +13,6 @@
 [submodule "tuktuk_vrf_er"]
 	path = tuktuk_vrf_er
 	url = https://github.com/namay10/tuktuk_vrf_er
+[submodule "accel-challenge-week3-breakout4"]
+	path = accel-challenge-week3-breakout4
+	url = https://github.com/solana-turbin3/accel-challenge-week3-breakout4
