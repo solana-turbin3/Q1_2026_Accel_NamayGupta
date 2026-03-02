@@ -14,7 +14,7 @@ mod state;
 program_entrypoint!(process_instruction);
 no_allocator!();
 nostd_panic_handler!();
-declare_id!("4ibrEMW5F6hKnkW4jVedswYv6H6VtwPN6ar6dvXDN1nT");
+declare_id!("Ee7GRKhLxqXGPZ9YtR88us4Ni5sHYMFsejFYaresHQDM");
 
 pub fn process_instruction(
     program_id: &Address,
