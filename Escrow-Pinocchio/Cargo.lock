@@ -1096,6 +1096,7 @@ dependencies = [
  "spl-associated-token-account",
  "spl-associated-token-account-interface",
  "spl-token-2022",
+ "wincode",
 ]
 
 [[package]]
