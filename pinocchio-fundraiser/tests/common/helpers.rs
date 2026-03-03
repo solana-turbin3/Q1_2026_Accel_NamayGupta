@@ -18,9 +18,6 @@ pub mod disc {
     pub const REFUND: u8 = 3;
 }
 
-/// Builds the Initialize instruction.
-///
-/// Accounts: maker (signer), mint, fundraiser
 pub fn ix_initialize(
     maker: &Keypair,
     mint: Address,
@@ -49,9 +46,6 @@ pub fn ix_initialize(
     }
 }
 
-/// Builds the Contribute instruction.
-///
-/// Accounts: contributor (signer), fundraiser, contributor_account, contributor_ata, vault, mint
 pub fn ix_contribute(
     contributor: &Keypair,
     fundraiser: Address,
@@ -86,9 +80,6 @@ pub fn ix_contribute(
     }
 }
 
-/// Builds the Check instruction (claim by maker when target met).
-///
-/// Accounts: maker (signer), maker_ata, fundraiser, vault
 pub fn ix_check(
     maker: &Keypair,
     maker_ata: Address,
@@ -104,14 +95,12 @@ pub fn ix_check(
             AccountMeta::new(maker_ata, false),
             AccountMeta::new(fundraiser, false),
             AccountMeta::new(vault, false),
+            AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
         ],
         data,
     }
 }
 
-/// Builds the Refund instruction (contributor reclaims when fundraiser ended and target not met).
-///
-/// Accounts: contributor (signer), maker, fundraiser, contributor_account, contributor_ata, vault
 pub fn ix_refund(
     contributor: &Keypair,
     maker: Address,
@@ -131,6 +120,7 @@ pub fn ix_refund(
             AccountMeta::new(contributor_account, false),
             AccountMeta::new(contributor_ata, false),
             AccountMeta::new(vault, false),
+            AccountMeta::new_readonly(TOKEN_PROGRAM_ID, false),
         ],
         data,
     }
