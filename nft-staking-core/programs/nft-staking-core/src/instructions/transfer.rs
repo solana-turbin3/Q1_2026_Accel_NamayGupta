@@ -58,8 +58,8 @@ impl<'info> Transfer<'info> {
             .system_program(Some(&self.system_program.to_account_info()))
             .add_remaining_account(
                 &self.oracle.to_account_info(),
-                true,  // writable
-                false, // not signer
+                true, // writable
+                true, // signer
             )
             .invoke()?;
 

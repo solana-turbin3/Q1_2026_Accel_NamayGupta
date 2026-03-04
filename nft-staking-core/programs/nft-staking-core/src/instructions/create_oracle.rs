@@ -1,8 +1,8 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{transfer, Transfer};
-use mpl_core::types::{ExternalValidationResult, OracleValidation};
 
-use crate::state::Oracle;
+
+use crate::state::{Oracle, OracleValidation, ExternalValidationResult};
 use crate::utils::{is_transfer_allowed, REWARD_IN_LAMPORTS};
 
 #[derive(Accounts)]
@@ -10,7 +10,7 @@ pub struct CreateOracle<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     #[account(
-        init,
+        init_if_needed,
         payer = payer,
         space = 8 + Oracle::INIT_SPACE, 
         seeds = [b"oracle"],

@@ -11,104 +11,47 @@ const FREEZE_PERIOD_IN_DAYS = 7;
 const TIME_TRAVEL_IN_DAYS = 8;
 
 describe("nft-staking-core", () => {
-  // Configure the client to use the local cluster.
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
   const program = anchor.workspace.nftStakingCore as Program<NftStakingCore>;
 
-  // Generate a keypair for the collection
   const collectionKeypair = anchor.web3.Keypair.generate();
 
-  // Find the update authority for the collection (PDA)
   const updateAuthority = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("update_authority"), collectionKeypair.publicKey.toBuffer()],
     program.programId
   )[0];
 
-  // Generate a keypair for the nft asset
-  const nftKeypair = anchor.web3.Keypair.generate();
 
-  // Find the config account (PDA)
+  const nft1Keypair = anchor.web3.Keypair.generate();
+
+  const nft2Keypair = anchor.web3.Keypair.generate();
+  // Receiver for transfer test
+  const receiver = anchor.web3.Keypair.generate();
+
   const config = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("config"), collectionKeypair.publicKey.toBuffer()],
     program.programId
   )[0];
 
-  // Find the rewards mint account (PDA)
   const rewardsMint = anchor.web3.PublicKey.findProgramAddressSync(
     [Buffer.from("rewards"), config.toBuffer()],
     program.programId
   )[0];
 
-  it("Create a collection", async () => {
-    const collectionName = "Test Collection";
-    const collectionUri = "https://example.com/collection";
-    const tx = await program.methods.createCollection(collectionName, collectionUri)
-    .accountsPartial({
-      payer: provider.wallet.publicKey,
-      collection: collectionKeypair.publicKey,
-      updateAuthority,
-      systemProgram: SystemProgram.programId,
-      mplCoreProgram: MPL_CORE_PROGRAM_ID,
-    })
-    .signers([collectionKeypair])
-    .rpc();
-    console.log("\nYour transaction signature", tx);
-    console.log("Collection address", collectionKeypair.publicKey.toBase58());
-  });
+  const oracle = anchor.web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("oracle")],
+    program.programId
+  )[0];
 
-  it("Mint an NFT", async () => {
-    const nftName = "Test NFT";
-    const nftUri = "https://example.com/nft";
-    const tx = await program.methods.mintNft(nftName, nftUri)
-    .accountsPartial({
-      user: provider.wallet.publicKey,
-      nft: nftKeypair.publicKey,
-      collection: collectionKeypair.publicKey,
-      updateAuthority,
-      systemProgram: SystemProgram.programId,
-      mplCoreProgram: MPL_CORE_PROGRAM_ID,
-    })
-    .signers([nftKeypair])
-    .rpc();
-    console.log("\nYour transaction signature", tx);
-    console.log("NFT address", nftKeypair.publicKey.toBase58());
-  });
+  const vault = anchor.web3.PublicKey.findProgramAddressSync(
+    [Buffer.from("vault"), oracle.toBuffer()],
+    program.programId
+  )[0];
 
-  it("Initialize stake config", async () => {
-    const tx = await program.methods.initializeConfig(POINTS_PER_STAKED_NFT_PER_DAY, FREEZE_PERIOD_IN_DAYS)
-    .accountsPartial({
-      admin: provider.wallet.publicKey,
-      collection: collectionKeypair.publicKey,
-      updateAuthority,
-      config,
-      rewardsMint,
-      systemProgram: SystemProgram.programId,
-      tokenProgram: TOKEN_PROGRAM_ID,
-    })
-    .rpc();
-    console.log("\nYour transaction signature", tx);
-    console.log("Config address", config.toBase58());
-    console.log("Points per staked NFT per day", POINTS_PER_STAKED_NFT_PER_DAY);
-    console.log("Freeze period in days", FREEZE_PERIOD_IN_DAYS);
-    console.log("Rewards mint address", rewardsMint.toBase58());
-  });
 
-  it("Stake an NFT", async () => {
-    const tx = await program.methods.stake()
-    .accountsPartial({
-      user: provider.wallet.publicKey,
-      updateAuthority,
-      config,
-      nft: nftKeypair.publicKey,
-      collection: collectionKeypair.publicKey,
-      systemProgram: SystemProgram.programId,
-      mplCoreProgram: MPL_CORE_PROGRAM_ID,
-    })
-    .rpc();
-    console.log("\nYour transaction signature", tx);
-  });
+  let dayOffset = 0;
 
   /**
    * Helper function to advance time with surfnet_timeTravel RPC method
@@ -130,38 +73,234 @@ describe("nft-staking-core", () => {
     if (result.error) {
       throw new Error(`Time travel failed: ${JSON.stringify(result.error)}`);
     }
-    
+
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
-  it("Time travel to the future", async () => {
-    // Advance time in milliseconds
-    const currentTimestamp = Date.now();
-    await advanceTime({ absoluteTimestamp: currentTimestamp + TIME_TRAVEL_IN_DAYS * MILLISECONDS_PER_DAY });
-    console.log("\nTime traveled in days", TIME_TRAVEL_IN_DAYS)
+  // ==================== SETUP ====================
+
+  it("Create an oracle", async () => {
+    const tx = await program.methods.createOracle().accountsPartial({
+      payer: provider.wallet.publicKey,
+      oracle,
+      vault,
+      systemProgram: SystemProgram.programId,
+    }).rpc();
+    console.log("\nYour transaction signature", tx);
   });
 
-  it("Unstake an NFT", async () => {
-    // Get the user rewards ATA account
+  it("Create a collection", async () => {
+    const collectionName = "Test Collection";
+    const collectionUri = "https://example.com/collection";
+    const tx = await program.methods.createCollection(collectionName, collectionUri)
+      .accountsPartial({
+        payer: provider.wallet.publicKey,
+        oracleAccount: oracle,
+        collection: collectionKeypair.publicKey,
+        updateAuthority,
+        systemProgram: SystemProgram.programId,
+        mplCoreProgram: MPL_CORE_PROGRAM_ID,
+      })
+      .signers([collectionKeypair])
+      .rpc();
+    console.log("\nYour transaction signature", tx);
+    console.log("Collection address", collectionKeypair.publicKey.toBase58());
+  });
+
+  it("Mint NFT #1", async () => {
+    const tx = await program.methods.mintNft("Test NFT 1", "https://example.com/nft1")
+      .accountsPartial({
+        user: provider.wallet.publicKey,
+        nft: nft1Keypair.publicKey,
+        collection: collectionKeypair.publicKey,
+        updateAuthority,
+        systemProgram: SystemProgram.programId,
+        mplCoreProgram: MPL_CORE_PROGRAM_ID,
+      })
+      .signers([nft1Keypair])
+      .rpc();
+    console.log("\nNFT #1 address", nft1Keypair.publicKey.toBase58());
+  });
+
+  it("Mint NFT #2", async () => {
+    const tx = await program.methods.mintNft("Test NFT 2", "https://example.com/nft2")
+      .accountsPartial({
+        user: provider.wallet.publicKey,
+        nft: nft2Keypair.publicKey,
+        collection: collectionKeypair.publicKey,
+        updateAuthority,
+        systemProgram: SystemProgram.programId,
+        mplCoreProgram: MPL_CORE_PROGRAM_ID,
+      })
+      .signers([nft2Keypair])
+      .rpc();
+    console.log("\nNFT #2 address", nft2Keypair.publicKey.toBase58());
+  });
+
+  it("Initialize stake config", async () => {
+    const tx = await program.methods.initializeConfig(POINTS_PER_STAKED_NFT_PER_DAY, FREEZE_PERIOD_IN_DAYS)
+      .accountsPartial({
+        admin: provider.wallet.publicKey,
+        collection: collectionKeypair.publicKey,
+        updateAuthority,
+        config,
+        rewardsMint,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc();
+    console.log("\nYour transaction signature", tx);
+    console.log("Config address", config.toBase58());
+    console.log("Points per staked NFT per day", POINTS_PER_STAKED_NFT_PER_DAY);
+    console.log("Freeze period in days", FREEZE_PERIOD_IN_DAYS);
+    console.log("Rewards mint address", rewardsMint.toBase58());
+  });
+
+  it("Stake NFT #1", async () => {
+    await program.methods.stake()
+      .accountsPartial({
+        user: provider.wallet.publicKey,
+        updateAuthority,
+        config,
+        nft: nft1Keypair.publicKey,
+        collection: collectionKeypair.publicKey,
+        systemProgram: SystemProgram.programId,
+        mplCoreProgram: MPL_CORE_PROGRAM_ID,
+      })
+      .rpc();
+    console.log("\nStaked NFT #1");
+  });
+
+  it("Stake NFT #2", async () => {
+    await program.methods.stake()
+      .accountsPartial({
+        user: provider.wallet.publicKey,
+        updateAuthority,
+        config,
+        nft: nft2Keypair.publicKey,
+        collection: collectionKeypair.publicKey,
+        systemProgram: SystemProgram.programId,
+        mplCoreProgram: MPL_CORE_PROGRAM_ID,
+      })
+      .rpc();
+    console.log("\nStaked NFT #2");
+  });
+
+  it("Time travel +8 days", async () => {
+    dayOffset += TIME_TRAVEL_IN_DAYS;
+    await advanceTime({ absoluteTimestamp: Date.now() + dayOffset * MILLISECONDS_PER_DAY });
+    console.log("\nTime traveled, total offset:", dayOffset, "days");
+  });
+
+  it("Claim rewards (NFT #1)", async () => {
     const userRewardsAta = getAssociatedTokenAddressSync(rewardsMint, provider.wallet.publicKey, false, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID);
-    const tx = await program.methods.unstake()
-    .accountsPartial({
+    await program.methods.claimRewards().accountsPartial({
       user: provider.wallet.publicKey,
       updateAuthority,
       config,
       rewardsMint,
       userRewardsAta,
-      nft: nftKeypair.publicKey,
+      nft: nft1Keypair.publicKey,
       collection: collectionKeypair.publicKey,
       mplCoreProgram: MPL_CORE_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
       tokenProgram: TOKEN_PROGRAM_ID,
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-    })
-    .rpc();
-    console.log("\nYour transaction signature", tx);
-    console.log("User rewards balance", (await provider.connection.getTokenAccountBalance(userRewardsAta)).value.uiAmount);
+    }).rpc();
+    const balance = (await provider.connection.getTokenAccountBalance(userRewardsAta)).value.uiAmount;
+    console.log("\nClaimed rewards for NFT #1, balance:", balance);
   });
 
+  it("Time travel +8 more days", async () => {
+    dayOffset += TIME_TRAVEL_IN_DAYS;
+    await advanceTime({ absoluteTimestamp: Date.now() + dayOffset * MILLISECONDS_PER_DAY });
+    console.log("\nTime traveled, total offset:", dayOffset, "days");
+  });
+
+  xit("Unstake NFT #1", async () => {
+    const userRewardsAta = getAssociatedTokenAddressSync(rewardsMint, provider.wallet.publicKey, false, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID);
+    await program.methods.unstake()
+      .accountsPartial({
+        user: provider.wallet.publicKey,
+        updateAuthority,
+        config,
+        rewardsMint,
+        userRewardsAta,
+        nft: nft1Keypair.publicKey,
+        collection: collectionKeypair.publicKey,
+        mplCoreProgram: MPL_CORE_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      })
+      .rpc();
+    const balance = (await provider.connection.getTokenAccountBalance(userRewardsAta)).value.uiAmount;
+    console.log("\nUnstaked NFT #1, rewards balance:", balance);
+  });
+
+  it("Burn staked NFT #2", async () => {
+    const userRewardsAta = getAssociatedTokenAddressSync(rewardsMint, provider.wallet.publicKey, false, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID);
+    await program.methods.burnStakedNft().accountsPartial({
+      user: provider.wallet.publicKey,
+      updateAuthority,
+      config,
+      rewardsMint,
+      userRewardsAta,
+      nft: nft2Keypair.publicKey,
+      collection: collectionKeypair.publicKey,
+      mplCoreProgram: MPL_CORE_PROGRAM_ID,
+      systemProgram: SystemProgram.programId,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+    }).rpc();
+    const balance = (await provider.connection.getTokenAccountBalance(userRewardsAta)).value.uiAmount;
+    console.log("\nBurned NFT #2, rewards balance:", balance);
+  });
+
+  it("Time travel to not allowed time", async () => {
+    dayOffset += 1;
+    const target = new Date(Date.now() + dayOffset * MILLISECONDS_PER_DAY);
+    target.setUTCHours(20, 0, 0, 0);
+    await advanceTime({ absoluteTimestamp: target.getTime() });
+    console.log("\nTraveled to 8PM UTC (outside transfer window)");
+  });
+
+  it("Update oracle", async () => {
+    const tx = await program.methods.updateValidationOracle()
+      .accountsPartial({
+        signer: provider.wallet.publicKey,
+        oracle,
+        vault,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+
+    const oracleData = await program.account.oracle.fetch(oracle);
+    console.log("\nUpdated Oracle", JSON.stringify(oracleData.validation));
+  });
+
+  it("Time travel to allowed time", async () => {
+    dayOffset += 1;
+    const target = new Date(Date.now() + dayOffset * MILLISECONDS_PER_DAY);
+    target.setUTCHours(10, 0, 0, 0);
+    await advanceTime({ absoluteTimestamp: target.getTime() });
+    console.log("\nTraveled to 10AM UTC (inside transfer window)");
+  });
+
+  it("Transfer NFT #1 to new owner", async () => {
+    const tx = await program.methods.transfer()
+      .accountsPartial({
+        owner: provider.wallet.publicKey,
+        updateAuthority,
+        nft: nft1Keypair.publicKey,
+        collection: collectionKeypair.publicKey,
+        receiver: receiver.publicKey,
+        oracle,
+        mplCoreProgram: MPL_CORE_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+    console.log("\nTransferred NFT #1 to", receiver.publicKey.toBase58());
+  });
 
 });

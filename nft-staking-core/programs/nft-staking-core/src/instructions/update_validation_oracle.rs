@@ -1,9 +1,8 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program::{transfer, Transfer};
-use mpl_core::types::{ExternalValidationResult, OracleValidation};
 
 use crate::errors::StakingError;
-use crate::state::Oracle;
+use crate::state::{ExternalValidationResult, Oracle, OracleValidation};
 use crate::utils::{is_close_to_open_close, is_transfer_allowed, REWARD_IN_LAMPORTS};
 
 #[derive(Accounts)]

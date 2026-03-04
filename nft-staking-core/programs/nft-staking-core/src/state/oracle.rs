@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use mpl_core::types::OracleValidation;
 
 #[account]
 pub struct Oracle {
@@ -9,5 +8,23 @@ pub struct Oracle {
 }
 
 impl Space for Oracle {
-    const INIT_SPACE: usize = 5 + 1 + 1; // OracleValidation::V1 (4 results) + bump + vault_bump
+    const INIT_SPACE: usize = 8 + 5 + 1; // discriminator + enum + bumps (approx)
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
+pub enum OracleValidation {
+    Uninitialized,
+    V1 {
+        create: ExternalValidationResult,
+        transfer: ExternalValidationResult,
+        burn: ExternalValidationResult,
+        update: ExternalValidationResult,
+    },
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug, PartialEq)]
+pub enum ExternalValidationResult {
+    Approved,
+    Rejected,
+    Pass,
 }
